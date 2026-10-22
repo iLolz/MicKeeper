@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <!-- MicKeeper app icon: a mic inside a shield on the accent squircle. -->
+  <rect x="100" y="100" width="824" height="824" rx="185" fill="#0A7F64"/>
+  <rect x="100" y="100" width="824" height="412" rx="185" fill="#FFFFFF" fill-opacity="0.06"/>
+  <path d="M512 236 L736 312 V516 C736 656 640 752 512 806 C384 752 288 656 288 516 V312 Z"
+        fill="none" stroke="#FFFFFF" stroke-width="44" stroke-linejoin="round"/>
+  <rect x="460" y="352" width="104" height="200" rx="52" fill="#FFFFFF"/>
+  <path d="M406 500 A106 106 0 0 0 618 500" fill="none" stroke="#FFFFFF" stroke-width="34" stroke-linecap="round"/>
+  <path d="M512 606 V660" fill="none" stroke="#FFFFFF" stroke-width="34" stroke-linecap="round"/>
+</svg>

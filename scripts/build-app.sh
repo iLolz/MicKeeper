@@ -19,6 +19,7 @@ BIN_DIR="$(swift build -c release --show-bin-path)"
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BIN_DIR/MicKeeperApp" "$APP/Contents/MacOS/MicKeeper"
+cp Resources/AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"
 
 cat > "$APP/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
@@ -33,6 +34,8 @@ cat > "$APP/Contents/Info.plist" <<PLIST
     <string>MicKeeper</string>
     <key>CFBundleDisplayName</key>
     <string>MicKeeper</string>
+    <key>CFBundleIconFile</key>
+    <string>AppIcon</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>
@@ -66,5 +69,7 @@ if [[ "${1:-}" == "--install" ]]; then
     mkdir -p "$HOME/Applications"
     rm -rf "$DEST"
     cp -R "$APP" "$DEST"
+    # Make Finder and the Dock notice the new icon.
+    touch "$DEST"
     echo "Installed $DEST"
 fi
