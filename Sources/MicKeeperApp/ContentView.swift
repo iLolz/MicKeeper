@@ -48,34 +48,32 @@ struct ContentView: View {
 
     private var header: some View {
         HStack(spacing: 12) {
-            Image(systemName: "mic.fill")
-                .font(.system(size: 17, weight: .semibold))
-                .foregroundStyle(.white)
-                .frame(width: 40, height: 40)
-                .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Theme.accent))
+            Logo.Tile(size: 40, cornerRadius: 10)
+                .fixedSize()
             VStack(alignment: .leading, spacing: 2) {
                 Text("MicKeeper").font(Theme.Font.title)
                 Text(tr("app.tagline"))
                     .foregroundStyle(Theme.muted)
             }
-            Spacer()
+            .fixedSize()
+            Spacer(minLength: 8)
             HStack(spacing: 8) {
                 Button(action: openSettings) {
                     Image(systemName: "gearshape")
                         .font(.system(size: 14, weight: .medium))
                         .foregroundStyle(Theme.muted)
-                        .frame(width: 26, height: 26)
+                        .frame(width: 22, height: 26)
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
                 .help(tr("header.settings.help"))
                 .accessibilityLabel(tr("header.settings.help"))
-                .padding(.trailing, 4)
                 Text(tr("header.auto")).foregroundStyle(Theme.muted)
                 AccentSwitch(isOn: Binding(get: { model.autoSwitch }, set: { model.setAutoSwitch($0) }),
                              label: tr("autoSwitch"))
                     .help(model.autoSwitch ? tr("autoSwitch.pause.help") : tr("autoSwitch.resume.help"))
             }
+            .fixedSize()
         }
     }
 

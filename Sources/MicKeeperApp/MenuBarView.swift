@@ -61,11 +61,7 @@ struct MenuBarView: View {
 
     private var header: some View {
         HStack(spacing: 10) {
-            Image(systemName: "mic.fill")
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(.white)
-                .frame(width: 28, height: 28)
-                .background(RoundedRectangle(cornerRadius: 7, style: .continuous).fill(Theme.accent))
+            Logo.Tile(size: 28, cornerRadius: 7)
             VStack(alignment: .leading, spacing: 1) {
                 Text("MicKeeper").font(.system(size: 13, weight: .semibold))
                 Text(tr("menu.using", model.currentDefault?.name ?? tr("menu.noMic")))

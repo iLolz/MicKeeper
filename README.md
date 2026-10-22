@@ -27,7 +27,7 @@ Na primeira execução a ordem inicial é: built-in, USB, outros, iPhone, Blueto
 
 ![Menu da barra de menus](docs/screenshots/menubar-light.png)
 
-- **Barra de menus:** o ícone de microfone fica sempre na barra (riscado quando a troca automática está pausada). O menu mostra o microfone em uso, o status Ativo/Pausado, os microfones por prioridade, a chave "Troca automática", "Abrir MicKeeper…" (⌘O) e "Sair" (⌘Q).
+- **Barra de menus:** o ícone do MicKeeper (microfone dentro de um escudo) fica sempre na barra, riscado quando a troca automática está pausada. O ícone do app e o da barra são desenhados a partir de `Resources/logo.svg`; `swift scripts/make-icon.swift` gera o `AppIcon.icns` de novo. O menu mostra o microfone em uso, o status Ativo/Pausado, os microfones por prioridade, a chave "Troca automática", "Abrir MicKeeper…" (⌘O) e "Sair" (⌘Q).
 - **Clicar num microfone no menu** faz dele o nº 1 da lista (e o ativa), então ele passa a ser usado na hora e continua sendo o preferido. Com a troca pausada, ele também vira a entrada padrão na hora.
 - **Fechar a janela não encerra o app:** ele continua na barra de menus e o ícone do Dock some. Só "Sair" encerra.
 - **Iniciar com o sistema** usa o `SMAppService` do macOS. Ao abrir no login, o app começa só na barra de menus, sem janela. Se o macOS pedir aprovação, aparece um botão para abrir Ajustes do Sistema › Itens de Início.

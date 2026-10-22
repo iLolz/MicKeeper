@@ -15,7 +15,9 @@ enum Entry {
         let args = CommandLine.arguments
         if let index = args.firstIndex(of: "--snapshot"), index + 1 < args.count {
             let language = args.firstIndex(of: "--lang").flatMap { $0 + 1 < args.count ? AppLanguage(rawValue: args[$0 + 1]) : nil }
-            let kind: SnapshotRenderer.Kind = args.contains("--popover") ? .popover : args.contains("--settings") ? .settings : .window
+            let kind: SnapshotRenderer.Kind = args.contains("--popover") ? .popover
+                : args.contains("--settings") ? .settings
+                : args.contains("--status-icon") ? .statusIcon : .window
             SnapshotRenderer.run(path: args[index + 1], dark: args.contains("--dark"), kind: kind, language: language)
         } else {
             let app = NSApplication.shared
@@ -171,10 +173,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     private func updateStatusIcon(autoSwitch: Bool) {
-        let name = autoSwitch ? "mic.fill" : "mic.slash.fill"
         let tooltip = autoSwitch ? tr("statusItem.active") : tr("statusItem.paused")
-        let image = NSImage(systemSymbolName: name, accessibilityDescription: tooltip)
-        image?.isTemplate = true
+        let image = Logo.menuBarImage(paused: !autoSwitch)
+        image.accessibilityDescription = tooltip
         statusItem.button?.image = image
         statusItem.button?.toolTip = tooltip
     }
@@ -228,7 +229,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
 @MainActor
 enum SnapshotRenderer {
-    enum Kind { case window, popover, settings }
+    enum Kind { case window, popover, settings, statusIcon }
 
     static func run(path: String, dark: Bool, kind: Kind, language: AppLanguage?) {
         let app = NSApplication.shared
@@ -239,10 +240,17 @@ enum SnapshotRenderer {
         case .window: root = AnyView(ContentView(openSettings: {}).environmentObject(model))
         case .popover: root = AnyView(MenuBarView(openWindow: {}, openSettings: {}, quit: {}).environmentObject(model))
         case .settings: root = AnyView(SettingsView().environmentObject(model))
+        case .statusIcon:
+            // Both menu bar variants at 4x, black on white, to check the template artwork.
+            root = AnyView(HStack(spacing: 24) {
+                ForEach([false, true], id: \.self) { paused in
+                    Image(nsImage: Logo.menuBarImage(paused: paused)).resizable().frame(width: 72, height: 72)
+                }
+            }.padding(16).background(Color.white).foregroundStyle(.black))
         }
         let host = NSHostingView(rootView: root)
         let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 480, height: 680),
-                              styleMask: kind == .popover ? [.borderless] : [.titled, .fullSizeContentView],
+                              styleMask: kind == .popover || kind == .statusIcon ? [.borderless] : [.titled, .fullSizeContentView],
                               backing: .buffered, defer: false)
         window.titlebarAppearsTransparent = true
         window.titleVisibility = .hidden
