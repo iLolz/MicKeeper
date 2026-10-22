@@ -1,5 +1,5 @@
 import XCTest
-@testable import MicPriorityCore
+@testable import MicKeeperCore
 
 final class MockAudioSystem: AudioSystem {
     private let lock = NSLock()
@@ -368,5 +368,45 @@ final class ConfigFileWatcherTests: XCTestCase {
         try ConfigStore(url: url).save(cfg)
         wait(for: [changed], timeout: 3)
         watcher.stop()
+    }
+}
+
+final class ConfigMigrationTests: XCTestCase {
+    private func tempURL(_ folder: String) -> URL {
+        FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+            .appendingPathComponent(folder).appendingPathComponent("config.json")
+    }
+
+    func testCopiesLegacyConfigWhenNewOneIsMissing() throws {
+        let legacy = ConfigStore(url: tempURL("MicPriority"))
+        var cfg = PriorityConfig()
+        cfg.register([builtIn, airpods])
+        try legacy.save(cfg)
+
+        let store = ConfigStore(url: tempURL("MicKeeper"))
+        XCTAssertTrue(store.migrateIfNeeded(from: legacy.url))
+        XCTAssertEqual(try store.load(), cfg)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: legacy.url.path), "legacy file is kept")
+    }
+
+    func testDoesNotOverwriteExistingConfig() throws {
+        let legacy = ConfigStore(url: tempURL("MicPriority"))
+        var old = PriorityConfig()
+        old.register([airpods])
+        try legacy.save(old)
+
+        let store = ConfigStore(url: tempURL("MicKeeper"))
+        var current = PriorityConfig()
+        current.register([builtIn])
+        try store.save(current)
+
+        XCTAssertFalse(store.migrateIfNeeded(from: legacy.url))
+        XCTAssertEqual(try store.load(), current)
+    }
+
+    func testNoLegacyConfigIsANoOp() {
+        let store = ConfigStore(url: tempURL("MicKeeper"))
+        XCTAssertFalse(store.migrateIfNeeded(from: tempURL("MicPriority")))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: store.url.path))
     }
 }

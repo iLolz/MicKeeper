@@ -1,5 +1,5 @@
 import Foundation
-import MicPriorityCore
+import MicKeeperCore
 
 /// UI state for the app. Owns the enforcer and mirrors its snapshots on the main thread.
 @MainActor
@@ -28,6 +28,7 @@ final class AppModel: ObservableObject {
     private static let autoSwitchKey = "autoSwitchEnabled"
 
     init(system: AudioSystem = AudioDeviceService(), store: ConfigStore = ConfigStore(), defaults: UserDefaults = .standard) {
+        store.migrateIfNeeded() // keep the order saved under the old MicPriority name
         let config = (try? store.load()) ?? PriorityConfig()
         let autoSwitch = defaults.object(forKey: Self.autoSwitchKey) as? Bool ?? true
         let enforcer = PriorityEnforcer(system: system, config: config, store: store, isEnforcing: autoSwitch)

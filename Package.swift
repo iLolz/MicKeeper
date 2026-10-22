@@ -2,29 +2,29 @@
 import PackageDescription
 
 let package = Package(
-    name: "MicPriority",
+    name: "MicKeeper",
     platforms: [.macOS(.v13)],
     products: [
-        .library(name: "MicPriorityCore", targets: ["MicPriorityCore"]),
-        .executable(name: "micpriority-cli", targets: ["micpriority-cli"]),
-        .executable(name: "MicPriorityApp", targets: ["MicPriorityApp"]),
+        .library(name: "MicKeeperCore", targets: ["MicKeeperCore"]),
+        .executable(name: "mickeeper-cli", targets: ["mickeeper-cli"]),
+        .executable(name: "MicKeeperApp", targets: ["MicKeeperApp"]),
     ],
     targets: [
         .target(
-            name: "MicPriorityCore",
+            name: "MicKeeperCore",
             linkerSettings: [.linkedFramework("CoreAudio")]
         ),
         .executableTarget(
-            name: "micpriority-cli",
-            dependencies: ["MicPriorityCore"]
+            name: "mickeeper-cli",
+            dependencies: ["MicKeeperCore"]
         ),
         .executableTarget(
-            name: "MicPriorityApp",
-            dependencies: ["MicPriorityCore"]
+            name: "MicKeeperApp",
+            dependencies: ["MicKeeperCore"]
         ),
         .testTarget(
-            name: "MicPriorityCoreTests",
-            dependencies: ["MicPriorityCore"]
+            name: "MicKeeperCoreTests",
+            dependencies: ["MicKeeperCore"]
         ),
     ]
 )

@@ -9,17 +9,17 @@ enum Entry {
         if let index = args.firstIndex(of: "--snapshot"), index + 1 < args.count {
             SnapshotRenderer.run(path: args[index + 1], dark: args.contains("--dark"))
         } else {
-            MicPriorityApp.main()
+            MicKeeperApp.main()
         }
     }
 }
 
-struct MicPriorityApp: App {
+struct MicKeeperApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @StateObject private var model = AppModel()
 
     var body: some Scene {
-        Window("MicPriority", id: "main") {
+        Window("MicKeeper", id: "main") {
             ContentView()
                 .environmentObject(model)
                 .frame(minWidth: 460, minHeight: 600)

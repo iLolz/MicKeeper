@@ -1,4 +1,4 @@
-import MicPriorityCore
+import MicKeeperCore
 import SwiftUI
 
 struct ContentView: View {
@@ -51,7 +51,7 @@ struct ContentView: View {
                 .frame(width: 40, height: 40)
                 .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Theme.accent))
             VStack(alignment: .leading, spacing: 2) {
-                Text("MicPriority").font(Theme.Font.title)
+                Text("MicKeeper").font(Theme.Font.title)
                 Text("Seu microfone preferido, sempre.")
                     .foregroundStyle(Theme.muted)
             }

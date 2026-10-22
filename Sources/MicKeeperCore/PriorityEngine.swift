@@ -81,7 +81,7 @@ public final class PriorityEnforcer {
     private let store: ConfigStore?
     private let debounce: TimeInterval
     private let selfWriteWindow: TimeInterval
-    private let queue = DispatchQueue(label: "com.alencar.micpriority.enforcer")
+    private let queue = DispatchQueue(label: "com.alencar.mickeeper.enforcer")
     private let logger = Logger(subsystem: Log.subsystem, category: "PriorityEnforcer")
 
     private var config: PriorityConfig

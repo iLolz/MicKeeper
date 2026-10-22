@@ -1,8 +1,8 @@
 import Foundation
-import MicPriorityCore
+import MicKeeperCore
 
 let usage = """
-Usage: micpriority-cli <command>
+Usage: mickeeper-cli <command>
 
 Commands:
   list                    Input devices and the priority order
@@ -19,6 +19,7 @@ func fail(_ message: String) -> Never {
 
 let system = AudioDeviceService()
 let store = ConfigStore()
+if store.migrateIfNeeded() { print("Migrated config from \(ConfigStore.legacyURL.path)") }
 
 func loadConfig() -> PriorityConfig {
     do { return try store.load() } catch { fail("Could not read \(store.url.path): \(error)") }

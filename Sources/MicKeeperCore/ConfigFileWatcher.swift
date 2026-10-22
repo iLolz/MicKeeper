@@ -8,7 +8,7 @@ import os
 public final class ConfigFileWatcher {
     private let store: ConfigStore
     private let handler: (PriorityConfig) -> Void
-    private let queue = DispatchQueue(label: "com.alencar.micpriority.config-watcher")
+    private let queue = DispatchQueue(label: "com.alencar.mickeeper.config-watcher")
     private let logger = Logger(subsystem: Log.subsystem, category: "ConfigFileWatcher")
     private var source: DispatchSourceFileSystemObject?
     private var lastData: Data?

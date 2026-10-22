@@ -5,7 +5,7 @@ import os
 /// CoreAudio implementation of `AudioSystem`.
 public final class AudioDeviceService: AudioSystem {
     private let logger = Logger(subsystem: Log.subsystem, category: "AudioDeviceService")
-    private let listenerQueue = DispatchQueue(label: "com.alencar.micpriority.coreaudio-listener")
+    private let listenerQueue = DispatchQueue(label: "com.alencar.mickeeper.coreaudio-listener")
     private var handler: ((AudioChangeEvent) -> Void)?
     private var devicesListener: AudioObjectPropertyListenerBlock?
     private var defaultInputListener: AudioObjectPropertyListenerBlock?
@@ -151,5 +151,5 @@ public final class AudioDeviceService: AudioSystem {
 }
 
 enum Log {
-    static let subsystem = "com.alencar.micpriority"
+    static let subsystem = "com.alencar.mickeeper"
 }

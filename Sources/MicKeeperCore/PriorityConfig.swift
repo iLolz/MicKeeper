@@ -114,12 +114,35 @@ public final class ConfigStore {
     public let url: URL
 
     public static var defaultURL: URL {
-        let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-        return base.appendingPathComponent("MicPriority", isDirectory: true).appendingPathComponent("config.json")
+        applicationSupport.appendingPathComponent("MicKeeper", isDirectory: true).appendingPathComponent("config.json")
+    }
+
+    /// Where the config lived before the app was renamed from MicPriority.
+    public static var legacyURL: URL {
+        applicationSupport.appendingPathComponent("MicPriority", isDirectory: true).appendingPathComponent("config.json")
+    }
+
+    private static var applicationSupport: URL {
+        FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
     }
 
     public init(url: URL = ConfigStore.defaultURL) {
         self.url = url
+    }
+
+    /// Copies the legacy config to `url` when only the legacy one exists, so the user keeps their order.
+    /// The legacy file is left in place. Returns true if it copied.
+    @discardableResult
+    public func migrateIfNeeded(from legacy: URL = ConfigStore.legacyURL) -> Bool {
+        let fm = FileManager.default
+        guard !fm.fileExists(atPath: url.path), fm.fileExists(atPath: legacy.path) else { return false }
+        do {
+            try fm.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+            try fm.copyItem(at: legacy, to: url)
+            return true
+        } catch {
+            return false
+        }
     }
 
     /// Returns the saved config, or a default one if the file does not exist.

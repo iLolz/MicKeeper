@@ -1,18 +1,18 @@
 #!/bin/bash
-# Builds build/MicPriority.app from the MicPriorityApp target and ad-hoc signs it.
+# Builds build/MicKeeper.app from the MicKeeperApp target and ad-hoc signs it.
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
 VERSION="0.2.0"
-APP="build/MicPriority.app"
+APP="build/MicKeeper.app"
 
-swift build -c release --product MicPriorityApp
+swift build -c release --product MicKeeperApp
 BIN_DIR="$(swift build -c release --show-bin-path)"
 
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
-cp "$BIN_DIR/MicPriorityApp" "$APP/Contents/MacOS/MicPriority"
+cp "$BIN_DIR/MicKeeperApp" "$APP/Contents/MacOS/MicKeeper"
 
 cat > "$APP/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
@@ -20,13 +20,13 @@ cat > "$APP/Contents/Info.plist" <<PLIST
 <plist version="1.0">
 <dict>
     <key>CFBundleExecutable</key>
-    <string>MicPriority</string>
+    <string>MicKeeper</string>
     <key>CFBundleIdentifier</key>
-    <string>com.alencar.micpriority</string>
+    <string>com.alencar.mickeeper</string>
     <key>CFBundleName</key>
-    <string>MicPriority</string>
+    <string>MicKeeper</string>
     <key>CFBundleDisplayName</key>
-    <string>MicPriority</string>
+    <string>MicKeeper</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>
