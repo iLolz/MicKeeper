@@ -20,6 +20,8 @@ rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BIN_DIR/MicKeeperApp" "$APP/Contents/MacOS/MicKeeper"
 cp Resources/AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"
+# Translations (pt-BR, en, es) live in the core library's resource bundle.
+cp -R "$BIN_DIR/MicKeeper_MicKeeperCore.bundle" "$APP/Contents/Resources/"
 
 cat > "$APP/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
@@ -44,6 +46,12 @@ cat > "$APP/Contents/Info.plist" <<PLIST
     <string>1</string>
     <key>CFBundleDevelopmentRegion</key>
     <string>pt-BR</string>
+    <key>CFBundleLocalizations</key>
+    <array>
+        <string>pt-BR</string>
+        <string>en</string>
+        <string>es</string>
+    </array>
     <key>LSMinimumSystemVersion</key>
     <string>13.0</string>
     <key>LSApplicationCategoryType</key>

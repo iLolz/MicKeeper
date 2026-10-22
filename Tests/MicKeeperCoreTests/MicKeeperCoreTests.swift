@@ -484,3 +484,48 @@ final class LaunchAtLoginTests: XCTestCase {
         XCTAssertEqual(state.hint, .error("Operation not permitted"))
     }
 }
+
+final class LocalizationTests: XCTestCase {
+    func testEveryKeyExistsInAllLanguages() {
+        let tables = AppLanguage.translations.map { ($0, L10n.table(for: $0)) }
+        let allKeys = tables.reduce(into: Set<String>()) { $0.formUnion($1.1.keys) }
+        XCTAssertGreaterThan(allKeys.count, 50)
+        for (language, table) in tables {
+            let missing = allKeys.subtracting(table.keys).sorted()
+            XCTAssertTrue(missing.isEmpty, "\(language.rawValue) is missing: \(missing)")
+            for (key, value) in table {
+                XCTAssertFalse(value.trimmingCharacters(in: .whitespaces).isEmpty, "\(language.rawValue): empty \(key)")
+            }
+        }
+    }
+
+    func testFormatPlaceholdersMatchAcrossLanguages() throws {
+        let pattern = try NSRegularExpression(pattern: "%[@d]")
+        func placeholders(_ s: String) -> [String] {
+            pattern.matches(in: s, range: NSRange(s.startIndex..., in: s)).map { (s as NSString).substring(with: $0.range) }
+        }
+        let base = L10n.table(for: .ptBR)
+        for language in [AppLanguage.en, .es] {
+            for (key, value) in L10n.table(for: language) {
+                XCTAssertEqual(placeholders(value), placeholders(base[key] ?? ""), "\(language.rawValue): \(key)")
+            }
+        }
+    }
+
+    func testLookupAndFormatting() {
+        XCTAssertEqual(L10n(language: .en).string("row.inUse"), "In use")
+        XCTAssertEqual(L10n(language: .es).string("row.inUse"), "En uso")
+        XCTAssertEqual(L10n(language: .ptBR).string("row.inUse"), "Em uso")
+        XCTAssertEqual(L10n(language: .en).string("menu.using", ["AirPods"]), "Using AirPods")
+        XCTAssertEqual(L10n(language: .es).string("status.ignoringMany", [3]), "Ignorando 3 micrófonos desactivados.")
+        XCTAssertEqual(L10n(language: .en).string("no.such.key"), "no.such.key")
+    }
+
+    func testSystemLanguageResolution() {
+        XCTAssertEqual(AppLanguage.system.resolved(preferred: ["pt-PT"]), .ptBR)
+        XCTAssertEqual(AppLanguage.system.resolved(preferred: ["fr-FR", "es-MX", "en-US"]), .es)
+        XCTAssertEqual(AppLanguage.system.resolved(preferred: ["en-GB"]), .en)
+        XCTAssertEqual(AppLanguage.system.resolved(preferred: ["de-DE"]), .en)
+        XCTAssertEqual(AppLanguage.es.resolved(preferred: ["pt-BR"]), .es)
+    }
+}

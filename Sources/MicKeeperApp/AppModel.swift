@@ -14,6 +14,11 @@ final class AppModel: ObservableObject {
     @Published private(set) var autoSwitch: Bool
     @Published private(set) var autoDisableBluetooth: Bool
     @Published private(set) var launchAtLogin: LaunchAtLoginState
+    /// The language picked in Settings (`.system` follows macOS).
+    @Published private(set) var languageChoice: AppLanguage
+
+    /// The language actually shown.
+    var language: AppLanguage { languageChoice.resolved() }
 
     var hasDisconnected: Bool { rows.contains { !$0.isConnected } }
     /// Connected microphones the user disabled (e.g. AirPods), shown as ignored in the status card.
@@ -28,9 +33,12 @@ final class AppModel: ObservableObject {
     private var lastDecision: EnforcerDecision?
 
     private static let autoSwitchKey = "autoSwitchEnabled"
+    private static let languageKey = "appLanguage"
+    private let persistsLanguage: Bool
 
     init(system: AudioSystem = AudioDeviceService(), store: ConfigStore = ConfigStore(),
-         defaults: UserDefaults = .standard, loginItems: LaunchAtLoginController = LaunchAtLoginController()) {
+         defaults: UserDefaults = .standard, loginItems: LaunchAtLoginController = LaunchAtLoginController(),
+         languageOverride: AppLanguage? = nil) {
         store.migrateIfNeeded() // keep the order saved under the old MicPriority name
         let config = (try? store.load()) ?? PriorityConfig()
         let autoSwitch = defaults.object(forKey: Self.autoSwitchKey) as? Bool ?? true
@@ -38,6 +46,11 @@ final class AppModel: ObservableObject {
 
         self.config = config
         self.defaults = defaults
+        // An override (snapshots) is shown but never saved.
+        let savedLanguage = defaults.string(forKey: Self.languageKey).flatMap(AppLanguage.init(rawValue:)) ?? .system
+        self.languageChoice = languageOverride ?? savedLanguage
+        self.persistsLanguage = languageOverride == nil
+        L10n.current = L10n(language: languageOverride ?? savedLanguage)
         self.loginItems = loginItems
         self.launchAtLogin = loginItems.state
         self.autoSwitch = autoSwitch
@@ -67,6 +80,13 @@ final class AppModel: ObservableObject {
     func useNow(uid: String) {
         change { $0.promote(uid: uid) }
         if !autoSwitch { enforcer.switchNow(toUID: uid) }
+    }
+
+    /// Switches the UI language immediately (views rebuild because they observe this model).
+    func setLanguage(_ choice: AppLanguage) {
+        L10n.current = L10n(language: choice)
+        if persistsLanguage { defaults.set(choice.rawValue, forKey: Self.languageKey) }
+        languageChoice = choice
     }
 
     func setLaunchAtLogin(_ on: Bool) {

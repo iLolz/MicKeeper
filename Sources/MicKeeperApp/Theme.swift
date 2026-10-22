@@ -1,3 +1,4 @@
+import MicKeeperCore
 import AppKit
 import SwiftUI
 
@@ -88,7 +89,7 @@ struct AccentSwitch: View {
         .buttonStyle(.plain)
         .opacity(isEnabled ? 1 : 0.45)
         .accessibilityLabel(label)
-        .accessibilityValue(isOn ? "Ligado" : "Desligado")
+        .accessibilityValue(isOn ? tr("switch.on") : tr("switch.off"))
         .accessibilityAddTraits(.isButton)
     }
 }

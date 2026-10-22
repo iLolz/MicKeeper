@@ -4,6 +4,7 @@ import SwiftUI
 struct ContentView: View {
     @EnvironmentObject private var model: AppModel
     @State private var confirmingRemoval = false
+    let openSettings: () -> Void
 
     var body: some View {
         VStack(spacing: 0) {
@@ -12,11 +13,11 @@ struct ContentView: View {
                 StatusCard(device: model.currentDefault, status: model.status, ignored: model.ignoredNames)
                 VStack(alignment: .leading, spacing: 8) {
                     HStack(alignment: .firstTextBaseline) {
-                        Text("Ordem de prioridade")
+                        Text(tr("list.title"))
                             .font(.system(size: 13, weight: .semibold))
                             .foregroundStyle(Theme.text)
                         Spacer()
-                        Text("Arraste para reordenar")
+                        Text(tr("list.dragHint"))
                             .font(Theme.Font.meta)
                             .foregroundStyle(Theme.muted)
                     }
@@ -37,11 +38,11 @@ struct ContentView: View {
         .fixedSize(horizontal: false, vertical: true)
         // The title bar inset (safe area) clears the traffic lights; only the background goes under it.
         .background(Theme.bg.ignoresSafeArea())
-        .confirmationDialog("Remover os microfones desconectados da lista?", isPresented: $confirmingRemoval) {
-            Button("Remover", role: .destructive) { model.removeDisconnected() }
-            Button("Cancelar", role: .cancel) {}
+        .confirmationDialog(tr("remove.confirm.title"), isPresented: $confirmingRemoval) {
+            Button(tr("remove.confirm.ok"), role: .destructive) { model.removeDisconnected() }
+            Button(tr("common.cancel"), role: .cancel) {}
         } message: {
-            Text("Se um deles conectar de novo, ele volta para o fim da lista.")
+            Text(tr("remove.confirm.message"))
         }
     }
 
@@ -54,23 +55,34 @@ struct ContentView: View {
                 .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Theme.accent))
             VStack(alignment: .leading, spacing: 2) {
                 Text("MicKeeper").font(Theme.Font.title)
-                Text("Seu microfone preferido, sempre.")
+                Text(tr("app.tagline"))
                     .foregroundStyle(Theme.muted)
             }
             Spacer()
             HStack(spacing: 8) {
-                Text("Automático").foregroundStyle(Theme.muted)
+                Button(action: openSettings) {
+                    Image(systemName: "gearshape")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundStyle(Theme.muted)
+                        .frame(width: 26, height: 26)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .help(tr("header.settings.help"))
+                .accessibilityLabel(tr("header.settings.help"))
+                .padding(.trailing, 4)
+                Text(tr("header.auto")).foregroundStyle(Theme.muted)
                 AccentSwitch(isOn: Binding(get: { model.autoSwitch }, set: { model.setAutoSwitch($0) }),
-                             label: "Troca automática")
-                    .help(model.autoSwitch ? "Pausar a troca automática" : "Retomar a troca automática")
+                             label: tr("autoSwitch"))
+                    .help(model.autoSwitch ? tr("autoSwitch.pause.help") : tr("autoSwitch.resume.help"))
             }
         }
     }
 
     private var settings: some View {
         VStack(spacing: 0) {
-            SettingRow(title: "Desativar microfones Bluetooth novos",
-                       detail: "Fones conectados pela primeira vez entram desligados.",
+            SettingRow(title: tr("setting.bluetooth.title"),
+                       detail: tr("setting.bluetooth.detail"),
                        isOn: Binding(get: { model.autoDisableBluetooth }, set: { model.setAutoDisableBluetooth($0) }))
             Rectangle().fill(Theme.border).frame(height: 1)
             LaunchAtLoginRow()
@@ -81,14 +93,14 @@ struct ContentView: View {
 
     private var footer: some View {
         HStack {
-            Text("Ao fechar, fica na barra de menus")
+            Text(tr("footer.closeHint"))
                 .font(Theme.Font.meta)
                 .foregroundStyle(Theme.muted)
             Spacer()
-            Button("Remover desconectados") { confirmingRemoval = true }
+            Button(tr("footer.removeDisconnected")) { confirmingRemoval = true }
                 .controlSize(.small)
                 .disabled(!model.hasDisconnected)
-                .help("Tira da lista os microfones que não estão conectados agora")
+                .help(tr("footer.removeDisconnected.help"))
         }
         .padding(.horizontal, 24)
         .padding(.vertical, 12)
@@ -103,18 +115,18 @@ private struct LaunchAtLoginRow: View {
     var body: some View {
         HStack(spacing: 12) {
             VStack(alignment: .leading, spacing: 2) {
-                Text("Iniciar com o sistema").font(.system(size: 13, weight: .medium))
+                Text(tr("login.title")).font(.system(size: 13, weight: .medium))
                 Text(detail).font(Theme.Font.meta).foregroundStyle(hintColor)
                     .fixedSize(horizontal: false, vertical: true)
                 if model.launchAtLogin.hint == .needsApproval {
-                    Button("Abrir Itens de Início…") { model.openLoginItemsSettings() }
+                    Button(tr("login.openSettings")) { model.openLoginItemsSettings() }
                         .controlSize(.small)
                         .padding(.top, 4)
                 }
             }
             Spacer()
             AccentSwitch(isOn: Binding(get: { model.launchAtLogin.isOn }, set: { model.setLaunchAtLogin($0) }),
-                         label: "Iniciar com o sistema")
+                         label: tr("login.title"))
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 10)
@@ -125,10 +137,10 @@ private struct LaunchAtLoginRow: View {
 
     private var detail: String {
         switch model.launchAtLogin.hint {
-        case .none: return "Abre escondido na barra de menus quando você entra no Mac."
-        case .needsApproval: return "Falta permitir o MicKeeper em Ajustes do Sistema › Geral › Itens de Início."
-        case .notFound: return "O macOS não encontrou o app. Instale com ./scripts/build-app.sh --install."
-        case .error(let message): return "Não foi possível alterar: \(message)"
+        case .none: return tr("login.detail")
+        case .needsApproval: return tr("login.needsApproval")
+        case .notFound: return tr("login.notFound")
+        case .error(let message): return tr("login.error", message)
         }
     }
 
@@ -177,7 +189,7 @@ struct StatusCard: View {
                 .background(Circle().fill(isActive ? Theme.accent : Theme.pausedDot))
             VStack(alignment: .leading, spacing: 3) {
                 SectionLabel(text: label, color: isActive ? Theme.accentText : Theme.pausedText)
-                Text(device?.name ?? "Nenhum microfone")
+                Text(device?.name ?? tr("status.noMic"))
                     .font(.system(size: 15, weight: .semibold))
                     .lineLimit(1)
                     .truncationMode(.middle)
@@ -195,26 +207,26 @@ struct StatusCard: View {
 
     private var label: String {
         switch status {
-        case .keeping, .adjusting: return "Em uso agora"
-        case .paused: return "Pausado"
-        case .noneAvailable: return "Sem microfone preferido"
-        case .failed: return "Erro ao trocar"
+        case .keeping, .adjusting: return tr("status.label.inUse")
+        case .paused: return tr("status.label.paused")
+        case .noneAvailable: return tr("status.label.noPreferred")
+        case .failed: return tr("status.label.failed")
         }
     }
 
     private var message: String {
         let base: String
         switch status {
-        case .keeping: base = "Mantendo sua preferência."
-        case .adjusting: base = "Ajustando para sua preferência…"
-        case .paused: return "O macOS escolhe o microfone sozinho."
-        case .noneAvailable: return "Nenhum microfone ativo está conectado. O macOS escolhe sozinho."
-        case .failed(let error): return "Não foi possível trocar o microfone (\(error))."
+        case .keeping: base = tr("status.keeping")
+        case .adjusting: base = tr("status.adjusting")
+        case .paused: return tr("status.pausedDetail")
+        case .noneAvailable: return tr("status.noneAvailable")
+        case .failed(let error): return tr("status.failedDetail", error)
         }
         switch ignored.count {
         case 0: return base
-        case 1: return "\(base) Ignorando \(ignored[0]), que está desativado."
-        default: return "\(base) Ignorando \(ignored.count) microfones desativados."
+        case 1: return base + " " + tr("status.ignoringOne", ignored[0])
+        default: return base + " " + tr("status.ignoringMany", ignored.count)
         }
     }
 }
@@ -229,7 +241,7 @@ private struct DeviceListCard: View {
             if model.rows.isEmpty {
                 VStack(spacing: 8) {
                     Image(systemName: "mic.slash").font(.system(size: 24)).foregroundStyle(Theme.faint)
-                    Text("Nenhum microfone encontrado").foregroundStyle(Theme.muted)
+                    Text(tr("list.empty")).foregroundStyle(Theme.muted)
                 }
                 .frame(maxWidth: .infinity, minHeight: 120)
             } else {
@@ -245,7 +257,7 @@ private struct DeviceListCard: View {
                                 }
                             }
                             .contextMenu {
-                                Button(row.isEnabled ? "Desativar" : "Ativar") {
+                                Button(row.isEnabled ? tr("row.disable") : tr("row.enable")) {
                                     model.setEnabled(!row.isEnabled, uid: row.uid)
                                 }
                             }
@@ -274,7 +286,7 @@ struct DeviceRowView: View {
     var body: some View {
         HStack(spacing: 10) {
             DragHandle()
-                .help("Arraste para reordenar")
+                .help(tr("list.dragHint"))
             Text("\(row.position)")
                 .font(.system(size: 13, weight: .semibold))
                 .monospacedDigit()
@@ -294,7 +306,7 @@ struct DeviceRowView: View {
                         .lineLimit(1)
                         .truncationMode(.middle)
                     if row.isCurrentDefault {
-                        Text("Em uso")
+                        Text(tr("row.inUse"))
                             .font(.system(size: 11, weight: .semibold))
                             .foregroundStyle(Theme.accentText)
                             .padding(.horizontal, 7)
@@ -310,14 +322,14 @@ struct DeviceRowView: View {
             .opacity(dimmed ? 0.55 : 1)
             Spacer(minLength: 8)
             AccentSwitch(isOn: Binding(get: { row.isEnabled }, set: onToggle),
-                         label: row.isEnabled ? "Desativar \(row.name)" : "Ativar \(row.name)")
+                         label: row.isEnabled ? tr("row.disableNamed", row.name) : tr("row.enableNamed", row.name))
         }
         .padding(.vertical, 8)
     }
 
     private var meta: String {
-        var state = row.isConnected ? "Conectado" : "Desconectado"
-        if !row.isEnabled { state += ", desativado" }
+        var state = row.isConnected ? tr("row.connected") : tr("row.disconnected")
+        if !row.isEnabled { state = tr("row.disabledSuffix", state) }
         return "\(row.transportType.localizedName) · \(state)"
     }
 }

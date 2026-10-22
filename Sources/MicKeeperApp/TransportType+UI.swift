@@ -13,16 +13,5 @@ extension TransportType {
         }
     }
 
-    var localizedName: String {
-        switch self {
-        case .builtIn: return "Embutido"
-        case .bluetooth: return "Bluetooth"
-        case .bluetoothLE: return "Bluetooth LE"
-        case .continuity: return "iPhone"
-        case .usb: return "USB"
-        case .virtual: return "Virtual"
-        case .aggregate: return "Agregado"
-        case .other: return "Outro"
-        }
-    }
+    var localizedName: String { tr("transport.\(rawValue)") }
 }

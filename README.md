@@ -33,6 +33,14 @@ Na primeira execução a ordem inicial é: built-in, USB, outros, iPhone, Blueto
 - **Iniciar com o sistema** usa o `SMAppService` do macOS. Ao abrir no login, o app começa só na barra de menus, sem janela. Se o macOS pedir aprovação, aparece um botão para abrir Ajustes do Sistema › Itens de Início.
 - A janela tem largura fixa e a altura acompanha a lista; com mais de 7 microfones, só a lista rola.
 
+## Idiomas e ajustes
+
+![Janela em inglês](docs/screenshots/window-en-light.png)
+
+- A interface está em **português (Brasil), inglês e espanhol**. Os textos ficam em `Sources/MicKeeperCore/Resources/<idioma>.lproj/Localizable.strings`; os nomes dos microfones vêm do sistema e não são traduzidos.
+- **Ajustes** (⌘, ou o botão de engrenagem na janela, ou "Ajustes…" no menu da barra de menus) tem o seletor de **Idioma**: "Automático (idioma do sistema)", "Português (Brasil)", "English" ou "Español". A troca vale na hora, sem reiniciar. No automático, o app segue o idioma do macOS (inclusive o idioma escolhido só para o MicKeeper em Ajustes do Sistema › Geral › Idioma e Região) e usa inglês se o idioma do sistema não for um dos três.
+- Um teste garante que toda chave existe nos três idiomas e que os `%@`/`%d` batem.
+
 ### Gerar, instalar e abrir o app
 
 ```bash
@@ -51,7 +59,7 @@ Para gerar uma imagem da janela sem precisar de permissão de Gravação de Tela
 build/MicKeeper.app/Contents/MacOS/MicKeeper --snapshot janela.png --dark
 ```
 
-Com `--popover` a imagem é do menu da barra de menus. Para abrir só na barra de menus (como no login):
+Com `--popover` a imagem é do menu da barra de menus, com `--settings` é a janela de Ajustes, e `--lang en` (ou `es`, `pt-BR`) escolhe o idioma só para a imagem. Para abrir só na barra de menus (como no login):
 
 ```bash
 open ~/Applications/MicKeeper.app --args --hidden

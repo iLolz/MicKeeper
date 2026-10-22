@@ -3,6 +3,7 @@ import PackageDescription
 
 let package = Package(
     name: "MicKeeper",
+    defaultLocalization: "pt-BR",
     platforms: [.macOS(.v13)],
     products: [
         .library(name: "MicKeeperCore", targets: ["MicKeeperCore"]),
@@ -12,6 +13,7 @@ let package = Package(
     targets: [
         .target(
             name: "MicKeeperCore",
+            resources: [.process("Resources")],
             linkerSettings: [.linkedFramework("CoreAudio")]
         ),
         .executableTarget(

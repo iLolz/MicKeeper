@@ -5,6 +5,7 @@ import SwiftUI
 struct MenuBarView: View {
     @EnvironmentObject private var model: AppModel
     let openWindow: () -> Void
+    let openSettings: () -> Void
     let quit: () -> Void
 
     var body: some View {
@@ -14,12 +15,12 @@ struct MenuBarView: View {
                 .padding(.top, 6)
                 .padding(.bottom, 10)
             MenuDivider()
-            SectionLabel(text: "Microfones por prioridade")
+            SectionLabel(text: tr("menu.section"))
                 .padding(.horizontal, 14)
                 .padding(.top, 10)
                 .padding(.bottom, 4)
             if model.rows.isEmpty {
-                Text("Nenhum microfone encontrado")
+                Text(tr("list.empty"))
                     .foregroundStyle(Theme.muted)
                     .padding(.horizontal, 14)
                     .padding(.vertical, 6)
@@ -33,18 +34,20 @@ struct MenuBarView: View {
             }
             MenuDivider()
             HStack {
-                Text("Troca automática")
+                Text(tr("autoSwitch"))
                 Spacer()
                 AccentSwitch(isOn: Binding(get: { model.autoSwitch }, set: { model.setAutoSwitch($0) }),
-                             label: "Troca automática")
+                             label: tr("autoSwitch"))
             }
             .padding(.horizontal, 14)
             .padding(.vertical, 4)
             MenuDivider()
             VStack(spacing: 0) {
-                MenuActionRow(title: "Abrir MicKeeper…", shortcut: "⌘O", action: openWindow)
+                MenuActionRow(title: tr("menu.settings"), shortcut: "⌘,", action: openSettings)
+                    .keyboardShortcut(",", modifiers: .command)
+                MenuActionRow(title: tr("menu.open"), shortcut: "⌘O", action: openWindow)
                     .keyboardShortcut("o", modifiers: .command)
-                MenuActionRow(title: "Sair", shortcut: "⌘Q", action: quit)
+                MenuActionRow(title: tr("menu.quit"), shortcut: "⌘Q", action: quit)
                     .keyboardShortcut("q", modifiers: .command)
             }
             .padding(.horizontal, 6)
@@ -65,7 +68,7 @@ struct MenuBarView: View {
                 .background(RoundedRectangle(cornerRadius: 7, style: .continuous).fill(Theme.accent))
             VStack(alignment: .leading, spacing: 1) {
                 Text("MicKeeper").font(.system(size: 13, weight: .semibold))
-                Text("Usando \(model.currentDefault?.name ?? "nenhum microfone")")
+                Text(tr("menu.using", model.currentDefault?.name ?? tr("menu.noMic")))
                     .font(Theme.Font.meta)
                     .foregroundStyle(Theme.muted)
                     .lineLimit(1)
@@ -74,7 +77,7 @@ struct MenuBarView: View {
             }
             .layoutPriority(1)
             Spacer(minLength: 6)
-            Text(model.autoSwitch ? "Ativo" : "Pausado")
+            Text(model.autoSwitch ? tr("menu.active") : tr("menu.paused"))
                 .font(.system(size: 11, weight: .semibold))
                 .foregroundStyle(model.autoSwitch ? Theme.accentText : Theme.pausedText)
                 .padding(.horizontal, 8)
@@ -131,12 +134,12 @@ private struct MenuDeviceRow: View {
         .disabled(!selectable)
         .opacity(selectable ? 1 : 0.45)
         .onHover { hovering = $0 }
-        .help(selectable ? "Usar agora (passa a ser o nº 1)" : "")
+        .help(selectable ? tr("row.useNow.help") : "")
     }
 
     private var meta: String {
-        if !row.isConnected { return "Desconectado" }
-        if !row.isEnabled { return "Desativado" }
+        if !row.isConnected { return tr("row.disconnected") }
+        if !row.isEnabled { return tr("row.disabled") }
         return row.transportType.localizedName
     }
 }

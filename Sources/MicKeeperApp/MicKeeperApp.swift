@@ -1,5 +1,6 @@
 import AppKit
 import Combine
+import MicKeeperCore
 import os
 import SwiftUI
 
@@ -9,11 +10,13 @@ enum Entry {
     private static var delegate: AppDelegate?
 
     static func main() {
-        // `--snapshot <path.png> [--dark] [--popover]` renders offscreen and exits
-        // (no Screen Recording permission needed).
+        // `--snapshot <path.png> [--dark] [--popover | --settings] [--lang pt-BR|en|es]` renders offscreen
+        // and exits (no Screen Recording permission needed).
         let args = CommandLine.arguments
         if let index = args.firstIndex(of: "--snapshot"), index + 1 < args.count {
-            SnapshotRenderer.run(path: args[index + 1], dark: args.contains("--dark"), popover: args.contains("--popover"))
+            let language = args.firstIndex(of: "--lang").flatMap { $0 + 1 < args.count ? AppLanguage(rawValue: args[$0 + 1]) : nil }
+            let kind: SnapshotRenderer.Kind = args.contains("--popover") ? .popover : args.contains("--settings") ? .settings : .window
+            SnapshotRenderer.run(path: args[index + 1], dark: args.contains("--dark"), kind: kind, language: language)
         } else {
             let app = NSApplication.shared
             let delegate = AppDelegate(startHidden: args.contains("--hidden"))
@@ -34,6 +37,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private var statusItem: NSStatusItem!
     private let popover = NSPopover()
     private var window: NSWindow?
+    private var settingsWindow: NSWindow?
     private var cancellables = Set<AnyCancellable>()
 
     init(startHidden: Bool) {
@@ -83,7 +87,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         window.titlebarAppearsTransparent = true
         window.isMovableByWindowBackground = true
         window.isReleasedWhenClosed = false
-        let host = NSHostingView(rootView: ContentView().environmentObject(model))
+        let host = NSHostingView(rootView: LocalizedRoot { [weak self] in
+            ContentView(openSettings: { self?.showSettings() })
+        }.environmentObject(model))
         // The window takes exactly the content's size (480 wide, height follows the list).
         host.sizingOptions = [.minSize, .maxSize, .intrinsicContentSize]
         window.contentView = host
@@ -96,9 +102,45 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     func windowWillClose(_ notification: Notification) {
-        // Keep running in the menu bar; hide the Dock icon.
+        let closing = notification.object as? NSWindow
+        // Keep running in the menu bar; hide the Dock icon once no window is left.
+        let otherVisible = [window, settingsWindow].contains { $0 != nil && $0 !== closing && $0!.isVisible }
+        guard !otherVisible else { return }
         NSApp.setActivationPolicy(.accessory)
         logger.info("Window closed; still running in the menu bar")
+    }
+
+    // MARK: Settings
+
+    @objc func showSettings() {
+        popover.performClose(nil)
+        let window = settingsWindow ?? makeSettingsWindow()
+        settingsWindow = window
+        window.title = tr("settings.title")
+        NSApp.setActivationPolicy(.regular)
+        window.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+    }
+
+    private func makeSettingsWindow() -> NSWindow {
+        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 480, height: 120),
+                              styleMask: [.titled, .closable], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        let host = NSHostingView(rootView: LocalizedRoot { SettingsView() }.environmentObject(model))
+        host.sizingOptions = [.minSize, .maxSize, .intrinsicContentSize]
+        window.contentView = host
+        window.setContentSize(host.fittingSize)
+        window.center()
+        window.setFrameAutosaveName("SettingsWindowPosition")
+        window.delegate = self
+        return window
+    }
+
+    /// Updates the AppKit parts (menus, titles, tooltips) after a language change; SwiftUI views rebuild themselves.
+    private func applyLanguage() {
+        setUpMainMenu()
+        settingsWindow?.title = tr("settings.title")
+        updateStatusIcon(autoSwitch: model.autoSwitch)
     }
 
     // MARK: Menu bar
@@ -111,23 +153,30 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
         popover.behavior = .transient
         popover.animates = true
-        popover.contentViewController = NSHostingController(rootView:
-            MenuBarView(openWindow: { [weak self] in self?.showWindow() },
+        popover.contentViewController = NSHostingController(rootView: LocalizedRoot { [weak self] in
+            MenuBarView(openWindow: { self?.showWindow() },
+                        openSettings: { self?.showSettings() },
                         quit: { NSApp.terminate(nil) })
-                .environmentObject(model))
+        }.environmentObject(model))
 
         model.$autoSwitch
             .sink { [weak self] on in self?.updateStatusIcon(autoSwitch: on) }
+            .store(in: &cancellables)
+        model.$languageChoice
+            .dropFirst()
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in self?.applyLanguage() }
             .store(in: &cancellables)
         logger.info("Status item created")
     }
 
     private func updateStatusIcon(autoSwitch: Bool) {
         let name = autoSwitch ? "mic.fill" : "mic.slash.fill"
-        let image = NSImage(systemSymbolName: name, accessibilityDescription: autoSwitch ? "MicKeeper ativo" : "MicKeeper pausado")
+        let tooltip = autoSwitch ? tr("statusItem.active") : tr("statusItem.paused")
+        let image = NSImage(systemSymbolName: name, accessibilityDescription: tooltip)
         image?.isTemplate = true
         statusItem.button?.image = image
-        statusItem.button?.toolTip = autoSwitch ? "MicKeeper: troca automática ativa" : "MicKeeper: pausado"
+        statusItem.button?.toolTip = tooltip
     }
 
     @objc private func togglePopover() {
@@ -148,18 +197,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
         let appItem = NSMenuItem()
         let appMenu = NSMenu()
-        appMenu.addItem(withTitle: "Sobre o MicKeeper", action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)), keyEquivalent: "")
+        appMenu.addItem(withTitle: tr("mainMenu.about"), action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)), keyEquivalent: "")
         appMenu.addItem(.separator())
-        appMenu.addItem(withTitle: "Ocultar MicKeeper", action: #selector(NSApplication.hide(_:)), keyEquivalent: "h")
+        let settingsItem = appMenu.addItem(withTitle: tr("mainMenu.settings"), action: #selector(showSettings), keyEquivalent: ",")
+        settingsItem.target = self
         appMenu.addItem(.separator())
-        appMenu.addItem(withTitle: "Sair do MicKeeper", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+        appMenu.addItem(withTitle: tr("mainMenu.hide"), action: #selector(NSApplication.hide(_:)), keyEquivalent: "h")
+        appMenu.addItem(.separator())
+        appMenu.addItem(withTitle: tr("mainMenu.quit"), action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         appItem.submenu = appMenu
         mainMenu.addItem(appItem)
 
         let windowItem = NSMenuItem()
-        let windowMenu = NSMenu(title: "Janela")
-        windowMenu.addItem(withTitle: "Fechar", action: #selector(NSWindow.performClose(_:)), keyEquivalent: "w")
-        windowMenu.addItem(withTitle: "Minimizar", action: #selector(NSWindow.performMiniaturize(_:)), keyEquivalent: "m")
+        let windowMenu = NSMenu(title: tr("mainMenu.window"))
+        windowMenu.addItem(withTitle: tr("mainMenu.close"), action: #selector(NSWindow.performClose(_:)), keyEquivalent: "w")
+        windowMenu.addItem(withTitle: tr("mainMenu.minimize"), action: #selector(NSWindow.performMiniaturize(_:)), keyEquivalent: "m")
         windowItem.submenu = windowMenu
         mainMenu.addItem(windowItem)
 
@@ -176,16 +228,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
 @MainActor
 enum SnapshotRenderer {
-    static func run(path: String, dark: Bool, popover: Bool) {
+    enum Kind { case window, popover, settings }
+
+    static func run(path: String, dark: Bool, kind: Kind, language: AppLanguage?) {
         let app = NSApplication.shared
         app.setActivationPolicy(.prohibited)
-        let model = AppModel()
-        let root: AnyView = popover
-            ? AnyView(MenuBarView(openWindow: {}, quit: {}).environmentObject(model))
-            : AnyView(ContentView().environmentObject(model))
+        let model = AppModel(languageOverride: language)
+        let root: AnyView
+        switch kind {
+        case .window: root = AnyView(ContentView(openSettings: {}).environmentObject(model))
+        case .popover: root = AnyView(MenuBarView(openWindow: {}, openSettings: {}, quit: {}).environmentObject(model))
+        case .settings: root = AnyView(SettingsView().environmentObject(model))
+        }
         let host = NSHostingView(rootView: root)
         let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 480, height: 680),
-                              styleMask: popover ? [.borderless] : [.titled, .fullSizeContentView],
+                              styleMask: kind == .popover ? [.borderless] : [.titled, .fullSizeContentView],
                               backing: .buffered, defer: false)
         window.titlebarAppearsTransparent = true
         window.titleVisibility = .hidden
