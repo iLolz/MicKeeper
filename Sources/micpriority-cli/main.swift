@@ -85,9 +85,13 @@ case "watch":
     enforcer.onConfigChange = { config in
         print("[\(timestamp())] config saved (\(config.devices.count) known devices)")
     }
+    // Pick up changes made by the app (or another CLI command) to the shared config.json.
+    let watcher = ConfigFileWatcher(store: store) { enforcer.reloadConfig($0) }
+    watcher.start()
     signal(SIGINT, SIG_IGN)
     let sigint = DispatchSource.makeSignalSource(signal: SIGINT, queue: .main)
     sigint.setEventHandler {
+        watcher.stop()
         enforcer.stop()
         print("\nStopped.")
         exit(0)

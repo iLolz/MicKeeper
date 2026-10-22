@@ -7,6 +7,7 @@ let package = Package(
     products: [
         .library(name: "MicPriorityCore", targets: ["MicPriorityCore"]),
         .executable(name: "micpriority-cli", targets: ["micpriority-cli"]),
+        .executable(name: "MicPriorityApp", targets: ["MicPriorityApp"]),
     ],
     targets: [
         .target(
@@ -15,6 +16,10 @@ let package = Package(
         ),
         .executableTarget(
             name: "micpriority-cli",
+            dependencies: ["MicPriorityCore"]
+        ),
+        .executableTarget(
+            name: "MicPriorityApp",
             dependencies: ["MicPriorityCore"]
         ),
         .testTarget(

@@ -98,6 +98,15 @@ public struct PriorityConfig: Codable, Equatable, Sendable {
         devices.removeAll { $0.uid == uid }
         disabledUIDs.remove(uid)
     }
+
+    /// Removes every known device that is not in `available`.
+    /// A removed device that reconnects is treated as new again.
+    public mutating func forgetDisconnected(available: [AudioDevice]) {
+        let connected = Set(available.map(\.uid))
+        for known in devices where !connected.contains(known.uid) {
+            forget(uid: known.uid)
+        }
+    }
 }
 
 /// Reads and writes the config as JSON.

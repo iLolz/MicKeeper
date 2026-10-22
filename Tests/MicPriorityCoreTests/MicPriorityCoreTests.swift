@@ -251,3 +251,122 @@ final class EnforcerTests: XCTestCase {
         XCTAssertEqual(lock.withLock { count }, 2)
     }
 }
+
+final class DeviceRowTests: XCTestCase {
+    func testRowsFollowPriorityOrderWithLiveState() {
+        var cfg = PriorityConfig()
+        cfg.register([builtIn, usb, airpods])
+        var renamedUSB = usb
+        renamedUSB.name = "USB Mic (renamed)"
+        let rows = DeviceRow.rows(config: cfg, available: [airpods, renamedUSB], currentDefaultUID: "usb")
+
+        XCTAssertEqual(rows.map(\.uid), ["builtin", "usb", "airpods"])
+        XCTAssertEqual(rows.map(\.position), [1, 2, 3])
+        XCTAssertEqual(rows.map(\.isConnected), [false, true, true])
+        XCTAssertEqual(rows.map(\.isEnabled), [true, true, false])
+        XCTAssertEqual(rows.map(\.isCurrentDefault), [false, true, false])
+        XCTAssertEqual(rows[1].name, "USB Mic (renamed)")
+        XCTAssertEqual(rows[0].name, "MacBook Microphone")
+    }
+
+    func testDeadDevicesShowAsDisconnected() {
+        var dead = usb
+        dead.isAlive = false
+        let cfg = PriorityConfig(devices: [KnownDevice(usb)])
+        XCTAssertFalse(DeviceRow.rows(config: cfg, available: [dead], currentDefaultUID: nil)[0].isConnected)
+    }
+
+    func testForgetDisconnected() {
+        var cfg = PriorityConfig()
+        cfg.register([builtIn, usb, airpods])
+        cfg.forgetDisconnected(available: [builtIn])
+        XCTAssertEqual(cfg.devices.map(\.uid), ["builtin"])
+        XCTAssertTrue(cfg.disabledUIDs.isEmpty)
+
+        // A forgotten Bluetooth device that comes back is treated as new (appended, disabled).
+        cfg.register([builtIn, airpods])
+        XCTAssertEqual(cfg.devices.map(\.uid), ["builtin", "airpods"])
+        XCTAssertFalse(cfg.isEnabled(uid: "airpods"))
+    }
+}
+
+final class EnforcerStateTests: XCTestCase {
+    func testPausedDoesNotSwitchButStillReports() {
+        let mock = MockAudioSystem(devices: [builtIn, airpods], defaultUID: "airpods")
+        let enforcer = PriorityEnforcer(system: mock, config: PriorityConfig(), isEnforcing: false, debounce: 0.05)
+        let snapshot = expectation(description: "snapshot")
+        var received: EnforcerSnapshot?
+        enforcer.onSnapshot = { received = $0; snapshot.fulfill() }
+        enforcer.start()
+        wait(for: [snapshot], timeout: 2)
+        enforcer.stop()
+
+        XCTAssertEqual(mock.setDefaultCallCount, 0)
+        XCTAssertEqual(received?.decision, .paused(current: airpods))
+        XCTAssertEqual(received?.preferred, builtIn)
+        XCTAssertEqual(received?.config.devices.count, 2)
+        XCTAssertEqual(received?.rows.first(where: \.isCurrentDefault)?.uid, "airpods")
+    }
+
+    func testResumingSwitchesBack() {
+        let mock = MockAudioSystem(devices: [builtIn, airpods], defaultUID: "airpods")
+        let enforcer = PriorityEnforcer(system: mock, config: PriorityConfig(), isEnforcing: false, debounce: 0.05)
+        let switched = expectation(description: "switched")
+        enforcer.onSnapshot = { snapshot in
+            if case .switched = snapshot.decision {
+                XCTAssertEqual(snapshot.currentDefault, builtIn)
+                XCTAssertTrue(snapshot.isEnforcing)
+                switched.fulfill()
+            }
+        }
+        enforcer.start()
+        enforcer.setEnforcing(true)
+        wait(for: [switched], timeout: 2)
+        enforcer.stop()
+        XCTAssertEqual(mock.defaultUID, "builtin")
+    }
+
+    func testUpdateConfigPersistsAndReloadDoesNot() throws {
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString).appendingPathComponent("config.json")
+        let store = ConfigStore(url: url)
+        let mock = MockAudioSystem(devices: [builtIn, usb], defaultUID: "builtin")
+        let enforcer = PriorityEnforcer(system: mock, config: PriorityConfig(), store: store, debounce: 0.05)
+        enforcer.start()
+
+        enforcer.updateConfig { $0.move(uid: "usb", to: 0) }
+        _ = enforcer.currentConfig // waits for the queue to drain the update
+        XCTAssertEqual(try store.load().devices.map(\.uid), ["usb", "builtin"])
+
+        var external = enforcer.currentConfig
+        external.setEnabled(false, uid: "usb")
+        enforcer.reloadConfig(external)
+        _ = enforcer.currentConfig
+        enforcer.stop()
+
+        XCTAssertFalse(enforcer.currentConfig.isEnabled(uid: "usb"))
+        XCTAssertTrue(try store.load().isEnabled(uid: "usb"), "reload must not write back to disk")
+        XCTAssertEqual(mock.defaultUID, "builtin", "reload re-evaluates with the new config")
+    }
+}
+
+final class ConfigFileWatcherTests: XCTestCase {
+    func testReportsChangesWrittenByAnotherProcess() throws {
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString).appendingPathComponent("config.json")
+        let store = ConfigStore(url: url)
+        try store.save(PriorityConfig())
+
+        let changed = expectation(description: "change seen")
+        let watcher = ConfigFileWatcher(store: store) { config in
+            if config.devices.map(\.uid) == ["usb"] { changed.fulfill() }
+        }
+        watcher.start()
+
+        var cfg = PriorityConfig()
+        cfg.register([usb])
+        try ConfigStore(url: url).save(cfg)
+        wait(for: [changed], timeout: 3)
+        watcher.stop()
+    }
+}

@@ -2,7 +2,7 @@
 
 Mantém o seu microfone preferido como entrada padrão do macOS, mesmo quando um fone Bluetooth conecta e o sistema troca o microfone sozinho.
 
-## Etapa 1: núcleo de áudio (este commit)
+## Etapa 1: núcleo de áudio
 
 - **`MicPriorityCore`** (biblioteca):
   - `AudioDevice` / `TransportType`: dispositivos com canais de entrada (built-in, Bluetooth, Bluetooth LE, USB, iPhone via Continuidade, virtual, agregado, outro).
@@ -13,6 +13,33 @@ Mantém o seu microfone preferido como entrada padrão do macOS, mesmo quando um
 - **Testes** com um `AudioSystem` simulado (sem hardware real).
 
 Na primeira execução a ordem inicial é: built-in, USB, outros, iPhone, Bluetooth, virtual. Dispositivos vistos depois entram no fim da lista; os Bluetooth entram desativados.
+
+## Etapa 2: janela do app
+
+![Janela no modo claro](docs/screenshots/step2-light.png)
+
+- **`MicPriorityApp`** (SwiftUI, macOS 13+): mostra o microfone em uso agora, a lista de microfones em ordem de prioridade (arraste para reordenar, chave para ativar ou desativar cada um), a chave "Automático" para pausar ou retomar a troca, a opção de desativar microfones Bluetooth novos e o botão "Remover desconectados".
+- Cores e tipografia ficam em `Sources/MicPriorityApp/Theme.swift`, com variantes para modo claro e escuro (inclui os tokens do menu da barra de menus, que chega na etapa 3).
+- **Uma única fonte de verdade:** o app e o CLI usam o mesmo `config.json`. Se você mudar algo pelo CLI com o app aberto, o app recarrega na hora. Com o app aberto, não precisa rodar o `watch`.
+- Com a troca automática pausada, o app continua mostrando os microfones, mas não troca a entrada.
+
+### Gerar e abrir o app
+
+```bash
+./scripts/build-app.sh
+```
+
+```bash
+open build/MicPriority.app
+```
+
+O script compila em modo release, monta `build/MicPriority.app` (bundle `com.alencar.micpriority`) e assina ad-hoc.
+
+Para gerar uma imagem da janela sem precisar de permissão de Gravação de Tela:
+
+```bash
+build/MicPriority.app/Contents/MacOS/MicPriority --snapshot janela.png --dark
+```
 
 ## Como usar o CLI
 
@@ -51,6 +78,5 @@ swift test
 
 ## Próximas etapas
 
-2. Janela SwiftUI com arrastar para reordenar.
-3. Modo barra de menus ao fechar a janela e iniciar com o sistema.
+3. Modo barra de menus ao fechar a janela e iniciar com o sistema (por enquanto, fechar a janela encerra o app).
 4. Empacotamento do app.
