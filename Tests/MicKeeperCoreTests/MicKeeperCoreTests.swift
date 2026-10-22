@@ -410,3 +410,77 @@ final class ConfigMigrationTests: XCTestCase {
         XCTAssertFalse(FileManager.default.fileExists(atPath: store.url.path))
     }
 }
+
+final class UseNowTests: XCTestCase {
+    func testPromoteMovesToTopAndEnables() {
+        var cfg = PriorityConfig()
+        cfg.register([builtIn, usb, airpods])
+        cfg.promote(uid: "airpods")
+        XCTAssertEqual(cfg.devices.map(\.uid), ["airpods", "builtin", "usb"])
+        XCTAssertTrue(cfg.isEnabled(uid: "airpods"))
+    }
+
+    func testSwitchNowWorksWhilePausedWithoutLooping() {
+        let mock = MockAudioSystem(devices: [builtIn, usb], defaultUID: "builtin")
+        let enforcer = PriorityEnforcer(system: mock, config: PriorityConfig(), isEnforcing: false, debounce: 0.05)
+        enforcer.start()
+        enforcer.switchNow(toUID: "usb")
+
+        let settle = expectation(description: "settle")
+        DispatchQueue.global().asyncAfter(deadline: .now() + 0.4) { settle.fulfill() }
+        wait(for: [settle], timeout: 2)
+        enforcer.stop()
+
+        XCTAssertEqual(mock.defaultUID, "usb")
+        XCTAssertEqual(mock.setDefaultCalls, ["usb"])
+    }
+}
+
+final class MockLoginItemService: LoginItemService {
+    var status: LoginItemStatus = .notRegistered
+    var statusAfterRegister: LoginItemStatus = .enabled
+    var error: Error?
+
+    func register() throws {
+        if let error { throw error }
+        status = statusAfterRegister
+    }
+
+    func unregister() throws {
+        if let error { throw error }
+        status = .notRegistered
+    }
+}
+
+final class LaunchAtLoginTests: XCTestCase {
+    func testStateMapping() {
+        XCTAssertEqual(LaunchAtLoginState(status: .enabled), LaunchAtLoginState(isOn: true))
+        XCTAssertEqual(LaunchAtLoginState(status: .notRegistered), LaunchAtLoginState(isOn: false))
+        XCTAssertEqual(LaunchAtLoginState(status: .requiresApproval), LaunchAtLoginState(isOn: true, hint: .needsApproval))
+        XCTAssertEqual(LaunchAtLoginState(status: .notFound), LaunchAtLoginState(isOn: false, hint: .notFound))
+    }
+
+    func testTurningOnAndOff() {
+        let service = MockLoginItemService()
+        let controller = LaunchAtLoginController(service: service)
+        XCTAssertEqual(controller.set(true), LaunchAtLoginState(isOn: true))
+        XCTAssertEqual(controller.set(false), LaunchAtLoginState(isOn: false))
+    }
+
+    func testTurningOnThatNeedsApproval() {
+        let service = MockLoginItemService()
+        service.statusAfterRegister = .requiresApproval
+        let state = LaunchAtLoginController(service: service).set(true)
+        XCTAssertTrue(state.isOn)
+        XCTAssertEqual(state.hint, .needsApproval)
+    }
+
+    func testErrorKeepsRealStatusAndReportsMessage() {
+        struct Failure: LocalizedError { var errorDescription: String? { "Operation not permitted" } }
+        let service = MockLoginItemService()
+        service.error = Failure()
+        let state = LaunchAtLoginController(service: service).set(true)
+        XCTAssertFalse(state.isOn)
+        XCTAssertEqual(state.hint, .error("Operation not permitted"))
+    }
+}

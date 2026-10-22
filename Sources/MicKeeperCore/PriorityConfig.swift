@@ -90,6 +90,12 @@ public struct PriorityConfig: Codable, Equatable, Sendable {
         devices = remaining
     }
 
+    /// Makes a device the top priority and enables it ("use this one now").
+    public mutating func promote(uid: String) {
+        move(uid: uid, to: 0)
+        setEnabled(true, uid: uid)
+    }
+
     public mutating func setEnabled(_ enabled: Bool, uid: String) {
         if enabled { disabledUIDs.remove(uid) } else { disabledUIDs.insert(uid) }
     }

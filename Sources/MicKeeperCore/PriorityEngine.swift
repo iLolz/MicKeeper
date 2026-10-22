@@ -159,6 +159,22 @@ public final class PriorityEnforcer {
         }
     }
 
+    /// Sets the default input right away, even while paused (e.g. picked from the menu bar).
+    public func switchNow(toUID uid: String) {
+        queue.async { [self] in
+            guard system.currentDefaultInput()?.uid != uid else { return }
+            pendingSelfWrite = (uid, Date().addingTimeInterval(selfWriteWindow))
+            do {
+                try system.setDefaultInput(uid: uid)
+                logger.info("Default input set to \(uid, privacy: .public) on request")
+            } catch {
+                pendingSelfWrite = nil
+                logger.error("Failed to set default input on request: \(String(describing: error), privacy: .public)")
+            }
+            evaluate()
+        }
+    }
+
     /// Runs an enforcement pass now, skipping the debounce.
     public func evaluateNow() {
         queue.async { [self] in evaluate() }

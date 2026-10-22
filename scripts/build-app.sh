@@ -1,5 +1,11 @@
 #!/bin/bash
 # Builds build/MicKeeper.app from the MicKeeperApp target and ad-hoc signs it.
+#
+#   ./scripts/build-app.sh            build only
+#   ./scripts/build-app.sh --install  also copy to ~/Applications/MicKeeper.app (no admin needed)
+#
+# "Iniciar com o sistema" registers the app at its current path, so use the installed copy for it:
+# build/ is wiped on every build.
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
@@ -41,9 +47,24 @@ cat > "$APP/Contents/Info.plist" <<PLIST
     <string>public.app-category.utilities</string>
     <key>NSHighResolutionCapable</key>
     <true/>
+    <key>LSUIElement</key>
+    <true/>
 </dict>
 </plist>
 PLIST
 
 codesign --force --sign - "$APP"
 echo "Built $APP"
+
+if [[ "${1:-}" == "--install" ]]; then
+    DEST="$HOME/Applications/MicKeeper.app"
+    if pgrep -xq MicKeeper; then
+        echo "Quitting the running MicKeeper"
+        pkill -x MicKeeper || true
+        sleep 1
+    fi
+    mkdir -p "$HOME/Applications"
+    rm -rf "$DEST"
+    cp -R "$APP" "$DEST"
+    echo "Installed $DEST"
+fi

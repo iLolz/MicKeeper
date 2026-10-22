@@ -13,6 +13,7 @@ final class AppModel: ObservableObject {
     @Published private(set) var status: Status = .adjusting
     @Published private(set) var autoSwitch: Bool
     @Published private(set) var autoDisableBluetooth: Bool
+    @Published private(set) var launchAtLogin: LaunchAtLoginState
 
     var hasDisconnected: Bool { rows.contains { !$0.isConnected } }
     /// Connected microphones the user disabled (e.g. AirPods), shown as ignored in the status card.
@@ -21,13 +22,15 @@ final class AppModel: ObservableObject {
     private let enforcer: PriorityEnforcer
     private let watcher: ConfigFileWatcher
     private let defaults: UserDefaults
+    private let loginItems: LaunchAtLoginController
     private var config: PriorityConfig
     private var available: [AudioDevice] = []
     private var lastDecision: EnforcerDecision?
 
     private static let autoSwitchKey = "autoSwitchEnabled"
 
-    init(system: AudioSystem = AudioDeviceService(), store: ConfigStore = ConfigStore(), defaults: UserDefaults = .standard) {
+    init(system: AudioSystem = AudioDeviceService(), store: ConfigStore = ConfigStore(),
+         defaults: UserDefaults = .standard, loginItems: LaunchAtLoginController = LaunchAtLoginController()) {
         store.migrateIfNeeded() // keep the order saved under the old MicPriority name
         let config = (try? store.load()) ?? PriorityConfig()
         let autoSwitch = defaults.object(forKey: Self.autoSwitchKey) as? Bool ?? true
@@ -35,6 +38,8 @@ final class AppModel: ObservableObject {
 
         self.config = config
         self.defaults = defaults
+        self.loginItems = loginItems
+        self.launchAtLogin = loginItems.state
         self.autoSwitch = autoSwitch
         self.autoDisableBluetooth = config.autoDisableBluetoothMics
         self.enforcer = enforcer
@@ -57,6 +62,28 @@ final class AppModel: ObservableObject {
         refresh()
     }
 
+    /// Makes this microphone the top priority (and enabled), so it is used now and stays chosen.
+    /// While paused, it also sets it as the default input right away.
+    func useNow(uid: String) {
+        change { $0.promote(uid: uid) }
+        if !autoSwitch { enforcer.switchNow(toUID: uid) }
+    }
+
+    func setLaunchAtLogin(_ on: Bool) {
+        launchAtLogin = loginItems.set(on)
+    }
+
+    /// Re-reads the login item status (the user may have approved it in System Settings).
+    func refreshLaunchAtLogin() {
+        let state = loginItems.state
+        // Keep an error message visible until the status itself changes.
+        if state.isOn != launchAtLogin.isOn || !isError(launchAtLogin.hint) { launchAtLogin = state }
+    }
+
+    func openLoginItemsSettings() {
+        SystemLoginItemService.openSystemSettings()
+    }
+
     func setAutoDisableBluetooth(_ on: Bool) {
         change { $0.autoDisableBluetoothMics = on }
     }
@@ -75,6 +102,11 @@ final class AppModel: ObservableObject {
     }
 
     // MARK: Private
+
+    private func isError(_ hint: LaunchAtLoginState.Hint) -> Bool {
+        if case .error = hint { return true }
+        return false
+    }
 
     /// Applies the change locally right away (so the UI does not flicker) and hands it to the enforcer.
     private func change(_ mutation: @escaping (inout PriorityConfig) -> Void) {

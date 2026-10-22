@@ -16,29 +16,45 @@ Na primeira execução a ordem inicial é: built-in, USB, outros, iPhone, Blueto
 
 ## Etapa 2: janela do app
 
-![Janela no modo claro](docs/screenshots/step2-light.png)
+![Janela no modo claro](docs/screenshots/window-light.png)
 
 - **`MicKeeperApp`** (SwiftUI, macOS 13+): mostra o microfone em uso agora, a lista de microfones em ordem de prioridade (arraste para reordenar, chave para ativar ou desativar cada um), a chave "Automático" para pausar ou retomar a troca, a opção de desativar microfones Bluetooth novos e o botão "Remover desconectados".
-- Cores e tipografia ficam em `Sources/MicKeeperApp/Theme.swift`, com variantes para modo claro e escuro (inclui os tokens do menu da barra de menus, que chega na etapa 3).
+- Cores e tipografia ficam em `Sources/MicKeeperApp/Theme.swift`, com variantes para modo claro e escuro (a janela e o menu da barra de menus usam os mesmos tokens).
 - **Uma única fonte de verdade:** o app e o CLI usam o mesmo `config.json`. Se você mudar algo pelo CLI com o app aberto, o app recarrega na hora. Com o app aberto, não precisa rodar o `watch`.
 - Com a troca automática pausada, o app continua mostrando os microfones, mas não troca a entrada.
 
-### Gerar e abrir o app
+## Etapa 3: barra de menus e iniciar com o sistema
+
+![Menu da barra de menus](docs/screenshots/menubar-light.png)
+
+- **Barra de menus:** o ícone de microfone fica sempre na barra (riscado quando a troca automática está pausada). O menu mostra o microfone em uso, o status Ativo/Pausado, os microfones por prioridade, a chave "Troca automática", "Abrir MicKeeper…" (⌘O) e "Sair" (⌘Q).
+- **Clicar num microfone no menu** faz dele o nº 1 da lista (e o ativa), então ele passa a ser usado na hora e continua sendo o preferido. Com a troca pausada, ele também vira a entrada padrão na hora.
+- **Fechar a janela não encerra o app:** ele continua na barra de menus e o ícone do Dock some. Só "Sair" encerra.
+- **Iniciar com o sistema** usa o `SMAppService` do macOS. Ao abrir no login, o app começa só na barra de menus, sem janela. Se o macOS pedir aprovação, aparece um botão para abrir Ajustes do Sistema › Itens de Início.
+- A janela tem largura fixa e a altura acompanha a lista; com mais de 7 microfones, só a lista rola.
+
+### Gerar, instalar e abrir o app
 
 ```bash
-./scripts/build-app.sh
+./scripts/build-app.sh --install
 ```
 
 ```bash
-open build/MicKeeper.app
+open ~/Applications/MicKeeper.app
 ```
 
-O script compila em modo release, monta `build/MicKeeper.app` (bundle `com.alencar.mickeeper`) e assina ad-hoc.
+O script compila em modo release, monta `build/MicKeeper.app` (bundle `com.alencar.mickeeper`), assina ad-hoc e, com `--install`, copia para `~/Applications/MicKeeper.app` (não precisa de administrador). Use a cópia instalada para "Iniciar com o sistema": a pasta `build/` é apagada a cada build, e o macOS registra o app pelo caminho dele.
 
 Para gerar uma imagem da janela sem precisar de permissão de Gravação de Tela:
 
 ```bash
 build/MicKeeper.app/Contents/MacOS/MicKeeper --snapshot janela.png --dark
+```
+
+Com `--popover` a imagem é do menu da barra de menus. Para abrir só na barra de menus (como no login):
+
+```bash
+open ~/Applications/MicKeeper.app --args --hidden
 ```
 
 ## Como usar o CLI
@@ -78,5 +94,4 @@ swift test
 
 ## Próximas etapas
 
-3. Modo barra de menus ao fechar a janela e iniciar com o sistema (por enquanto, fechar a janela encerra o app).
 4. Empacotamento do app.

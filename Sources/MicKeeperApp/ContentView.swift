@@ -23,18 +23,20 @@ struct ContentView: View {
                     DeviceListCard()
                 }
                 settings
-                Spacer(minLength: 0)
             }
             .padding(.horizontal, 24)
-            // Room for the traffic lights, which sit over the content (hidden title bar).
-            .padding(.top, 38)
-            .padding(.bottom, 16)
+            .padding(.top, 10)
+            .padding(.bottom, 20)
 
             footer
         }
         .font(Theme.Font.base)
         .foregroundStyle(Theme.text)
-        .background(Theme.bg)
+        // Fixed width; the height hugs the content so the window grows and shrinks with the list.
+        .frame(width: 480)
+        .fixedSize(horizontal: false, vertical: true)
+        // The title bar inset (safe area) clears the traffic lights; only the background goes under it.
+        .background(Theme.bg.ignoresSafeArea())
         .confirmationDialog("Remover os microfones desconectados da lista?", isPresented: $confirmingRemoval) {
             Button("Remover", role: .destructive) { model.removeDisconnected() }
             Button("Cancelar", role: .cancel) {}
@@ -71,11 +73,7 @@ struct ContentView: View {
                        detail: "Fones conectados pela primeira vez entram desligados.",
                        isOn: Binding(get: { model.autoDisableBluetooth }, set: { model.setAutoDisableBluetooth($0) }))
             Rectangle().fill(Theme.border).frame(height: 1)
-            // Wired up in step 3 (SMAppService).
-            SettingRow(title: "Iniciar com o sistema",
-                       detail: "Disponível em breve.",
-                       isOn: .constant(false))
-                .disabled(true)
+            LaunchAtLoginRow()
         }
         .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Theme.surface))
         .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Theme.border))
@@ -96,6 +94,49 @@ struct ContentView: View {
         .padding(.vertical, 12)
         .background(Theme.bg)
         .overlay(alignment: .top) { Rectangle().fill(Theme.border).frame(height: 1) }
+    }
+}
+
+private struct LaunchAtLoginRow: View {
+    @EnvironmentObject private var model: AppModel
+
+    var body: some View {
+        HStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Iniciar com o sistema").font(.system(size: 13, weight: .medium))
+                Text(detail).font(Theme.Font.meta).foregroundStyle(hintColor)
+                    .fixedSize(horizontal: false, vertical: true)
+                if model.launchAtLogin.hint == .needsApproval {
+                    Button("Abrir Itens de Início…") { model.openLoginItemsSettings() }
+                        .controlSize(.small)
+                        .padding(.top, 4)
+                }
+            }
+            Spacer()
+            AccentSwitch(isOn: Binding(get: { model.launchAtLogin.isOn }, set: { model.setLaunchAtLogin($0) }),
+                         label: "Iniciar com o sistema")
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+            model.refreshLaunchAtLogin()
+        }
+    }
+
+    private var detail: String {
+        switch model.launchAtLogin.hint {
+        case .none: return "Abre escondido na barra de menus quando você entra no Mac."
+        case .needsApproval: return "Falta permitir o MicKeeper em Ajustes do Sistema › Geral › Itens de Início."
+        case .notFound: return "O macOS não encontrou o app. Instale com ./scripts/build-app.sh --install."
+        case .error(let message): return "Não foi possível alterar: \(message)"
+        }
+    }
+
+    private var hintColor: Color {
+        switch model.launchAtLogin.hint {
+        case .none: return Theme.muted
+        case .needsApproval, .notFound, .error: return Theme.pausedText
+        }
     }
 }
 
@@ -181,6 +222,7 @@ struct StatusCard: View {
 private struct DeviceListCard: View {
     @EnvironmentObject private var model: AppModel
     private let rowHeight: CGFloat = 53
+    private let maxVisibleRows = 7
 
     var body: some View {
         Group {
@@ -213,9 +255,8 @@ private struct DeviceListCard: View {
                 .listStyle(.plain)
                 .scrollContentBackground(.hidden)
                 .environment(\.defaultMinListRowHeight, rowHeight)
-                // Grow with the rows; scroll only when the window is too short for all of them.
-                .frame(minHeight: rowHeight * CGFloat(min(model.rows.count, 3)),
-                       maxHeight: rowHeight * CGFloat(model.rows.count))
+                // Exactly as tall as the rows, up to `maxVisibleRows`; beyond that only the list scrolls.
+                .frame(height: rowHeight * CGFloat(min(model.rows.count, maxVisibleRows)))
             }
         }
         .background(Theme.surface)
